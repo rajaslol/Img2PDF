@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snap2PDF – Image to PDF Converter</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+    :root {
+      --bg-primary:    #0a0a0a;
+      --bg-secondary:  #111111;
+      --bg-tertiary:   #1a1a1a;
+      --text-primary:  #ffffff;
+      --text-secondary:#a0a0a0;
+      --text-muted:    #666666;
+      --border-color:  #2a2a2a;
+      --accent:        #8b5cf6;
+      --accent-hover:  #7c3aed;
+      --accent-dim:    rgba(139,92,246,0.12);
+      --hover-bg:      #1f1f1f;
+      --success:       #22c55e;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container { max-width: 860px; margin: 0 auto; }
+
+    /* ── Header ── */
+    header {
+      padding: 28px 0 32px;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 28px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .logo-icon { color: var(--accent); flex-shrink: 0; }
+    .logo span { color: var(--accent); }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 28px;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      letter-spacing: -0.025em;
+    }
+
+    .card-sub {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+
+    /* ── Upload Area ── */
+    .upload-area {
+      border: 2px dashed var(--border-color);
+      border-radius: 10px;
+      padding: 44px 20px;
+      text-align: center;
+      cursor: pointer;
+      background: var(--bg-primary);
+      transition: border-color 0.2s, background 0.2s;
+      margin-bottom: 22px;
+    }
+
+    .upload-area:hover,
+    .upload-area.drag-over {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .upload-area.has-files {
+      border-style: solid;
+      border-color: var(--border-color);
+      padding: 20px;
+    }
+
+    .upload-area.has-files:hover {
+      border-color: var(--accent);
+    }
+
+    .upload-icon-wrap { margin-bottom: 12px; color: var(--text-muted); }
+
+    .upload-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .upload-hint { font-size: 12px; color: var(--text-muted); }
+
+    input[type="file"] { display: none; }
+
+    .btn-select {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 16px;
+      padding: 9px 18px;
+      background: var(--text-primary);
+      color: var(--bg-primary);
+      border: none;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s, transform 0.15s;
+    }
+
+    .btn-select:hover { background: #d4d4d4; transform: translateY(-1px); }
+
+    /* ── Thumbnails ── */
+    .thumb-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+      max-height: 280px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+
+    .thumb-grid::-webkit-scrollbar { width: 5px; }
+    .thumb-grid::-webkit-scrollbar-track { background: transparent; }
+    .thumb-grid::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+
+    .thumb {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: 7px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      background: var(--bg-tertiary);
+    }
+
+    .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    .thumb-rm {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-end;
+      padding: 5px;
+      transition: background 0.15s;
+    }
+
+    .thumb-rm:hover { background: rgba(0,0,0,0.45); }
+
+    .thumb-rm-icon {
+      width: 20px;
+      height: 20px;
+      background: rgba(0,0,0,0.75);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.15s;
+      pointer-events: none;
+    }
+
+    .thumb:hover .thumb-rm-icon { opacity: 1; }
+
+    /* ── Section labels ── */
+    .sec-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    /* ── Options ── */
+    .options-wrap { display: none; margin-bottom: 22px; }
+    .options-wrap.show { display: block; }
+
+    .opt-group { margin-bottom: 20px; }
+
+    .opt-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .opt-btn {
+      padding: 9px 15px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 7px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      transition: border-color 0.15s, background 0.15s, color 0.15s;
+    }
+
+    .opt-btn:hover { border-color: var(--text-muted); background: var(--hover-bg); }
+
+    .opt-btn.active {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--text-primary);
+    }
+
+    /* ── Quality stepper ── */
+    .quality-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .q-btn {
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-primary);
+      border-radius: 7px;
+      color: var(--text-secondary);
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.15s;
+    }
+
+    .q-btn:hover { border-color: var(--text-muted); }
+
+    .q-val {
+      font-size: 18px;
+      font-weight: 700;
+      min-width: 28px;
+      text-align: center;
+      color: var(--accent);
+    }
+
+    .q-label { font-size: 12px; color: var(--text-muted); }
+
+    /* ── Filename ── */
+    .filename-wrap { display: none; margin-bottom: 22px; }
+    .filename-wrap.show { display: block; }
+
+    .filename-input {
+      width: 100%;
+      padding: 11px 14px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 7px;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.15s;
+      margin-top: 8px;
+    }
+
+    .filename-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    /* ── Convert Button ── */
+    .btn-convert {
+      width: 100%;
+      padding: 14px 24px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-family: inherit;
+      letter-spacing: -0.01em;
+      transition: background 0.15s, transform 0.15s, opacity 0.15s;
+    }
+
+    .btn-convert:hover:not(:disabled) {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-convert:disabled {
+      background: var(--bg-tertiary);
+      color: var(--text-muted);
+      cursor: not-allowed;
+      transform: none;
+      opacity: 1;
+    }
+
+    /* ── Progress / Status ── */
+    .status-area { margin-top: 20px; min-height: 52px; }
+
+    .status-txt {
+      font-size: 13px;
+      color: var(--text-secondary);
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .prog-track {
+      height: 4px;
+      background: var(--bg-tertiary);
+      border-radius: 2px;
+      overflow: hidden;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .prog-track.active { opacity: 1; }
+
+    .prog-bar {
+      height: 100%;
+      background: var(--accent);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .success-msg {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      margin-top: 14px;
+      color: var(--success);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .success-msg.show { display: flex; }
+
+    /* ── How to Use ── */
+    .steps { display: flex; flex-direction: column; gap: 0; }
+
+    .step {
+      display: flex;
+      gap: 16px;
+      padding: 18px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .step:last-child { border-bottom: none; padding-bottom: 0; }
+
+    .step-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .step-body {}
+
+    .step-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 5px;
+      color: var(--text-primary);
+    }
+
+    .step-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.65;
+    }
+
+    .step-desc strong { color: var(--text-primary); font-weight: 600; }
+    .step-desc code {
+      font-size: 12px;
+      background: var(--bg-tertiary);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-family: monospace;
+    }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border-color);
+      padding: 28px 0;
+      margin-top: 4px;
+    }
+
+    .footer-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px 20px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .footer-link {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: color 0.15s;
+    }
+
+    .footer-link:hover { color: var(--text-primary); }
+
+    .tos-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      padding: 0;
+      transition: color 0.15s;
+    }
+
+    .tos-btn:hover { color: var(--text-primary); }
+
+    .dot { color: var(--border-color); }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      backdrop-filter: blur(5px);
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 32px;
+      max-width: 520px;
+      width: 100%;
+      max-height: 82vh;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    .modal::-webkit-scrollbar { width: 5px; }
+    .modal::-webkit-scrollbar-track { background: transparent; }
+    .modal::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+
+    .modal-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 28px;
+      height: 28px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .modal-close:hover { color: var(--text-primary); border-color: var(--text-muted); }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      letter-spacing: -0.02em;
+    }
+
+    .modal-date { font-size: 11px; color: var(--text-muted); margin-bottom: 22px; }
+
+    .modal-sec { margin-bottom: 18px; }
+
+    .modal-sec h3 {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--accent);
+      margin-bottom: 7px;
+    }
+
+    .modal-sec p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+
+    .modal-sec p strong { color: var(--text-primary); }
+
+    .modal-hr { height: 1px; background: var(--border-color); margin: 16px 0; }
+
+    /* ── Spin ── */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { animation: spin 0.9s linear infinite; }
+
+    /* ── Responsive ── */
+    @media (min-width: 640px) {
+      body { padding: 28px; }
+      .card { padding: 36px; }
+      .card-title { font-size: 26px; }
+      .upload-area { padding: 56px 24px; }
+      .upload-area.has-files { padding: 20px; }
+      .thumb-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 12px; }
+    }
+
+    @media (min-width: 1024px) {
+      body { padding: 40px; }
+      .container { max-width: 920px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <!-- camera icon -->
+      <svg class="logo-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+      Snap<span>2PDF</span>
+    </div>
+  </header>
+
+  <!-- Main Card -->
+  <div class="card">
+    <h1 class="card-title">Convert Images to PDF</h1>
+    <p class="card-sub">Drag in your images, pick your settings, and download a PDF in seconds. Everything runs in your browser — nothing is uploaded anywhere.</p>
+
+    <!-- Upload Area -->
+    <div class="upload-area" id="uploadArea">
+      <div id="uploadPlaceholder">
+        <div class="upload-icon-wrap">
+          <!-- image-plus icon -->
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/><line x1="16" y1="5" x2="16" y2="11"/><line x1="13" y1="8" x2="19" y2="8"/>
+          </svg>
+        </div>
+        <p class="upload-label">Drag and drop images here</p>
+        <p class="upload-hint">JPG, PNG, WebP supported</p>
+        <input type="file" id="imageInput" accept="image/jpeg,image/png,image/webp" multiple>
+        <button class="btn-select" id="selectBtn" type="button">
+          <!-- plus icon -->
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Select Images
+        </button>
+      </div>
+      <div class="thumb-grid" id="thumbGrid"></div>
+    </div>
+
+    <!-- Options -->
+    <div class="options-wrap" id="optionsWrap">
+
+      <div class="opt-group">
+        <p class="sec-label">Page Orientation</p>
+        <div class="opt-row">
+          <button class="opt-btn active" data-opt="orientation" data-val="portrait" type="button">Portrait</button>
+          <button class="opt-btn" data-opt="orientation" data-val="landscape" type="button">Landscape</button>
+        </div>
+      </div>
+
+      <div class="opt-group">
+        <p class="sec-label">Page Size</p>
+        <div class="opt-row">
+          <button class="opt-btn active" data-opt="pagesize" data-val="a4" type="button">A4</button>
+          <button class="opt-btn" data-opt="pagesize" data-val="letter" type="button">US Letter</button>
+          <button class="opt-btn" data-opt="pagesize" data-val="auto" type="button">Match Image</button>
+        </div>
+      </div>
+
+      <div class="opt-group">
+        <p class="sec-label">Page Margin</p>
+        <div class="opt-row">
+          <button class="opt-btn active" data-opt="margin" data-val="none" type="button">None</button>
+          <button class="opt-btn" data-opt="margin" data-val="small" type="button">Small</button>
+          <button class="opt-btn" data-opt="margin" data-val="big" type="button">Big</button>
+        </div>
+      </div>
+
+      <div class="opt-group">
+        <p class="sec-label">Compression</p>
+        <div class="opt-row">
+          <button class="opt-btn active" data-opt="compression" data-val="compress" type="button">Compress</button>
+          <button class="opt-btn" data-opt="compression" data-val="nocompress" type="button">No Compression</button>
+        </div>
+        <div class="quality-row" id="qualityRow">
+          <button class="q-btn" id="qDown" type="button">−</button>
+          <span class="q-val" id="qVal">1</span>
+          <button class="q-btn" id="qUp" type="button">+</button>
+          <span class="q-label">Quality (1 = smaller file, 5 = best quality)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filename -->
+    <div class="filename-wrap" id="filenameWrap">
+      <p class="sec-label">PDF Filename</p>
+      <input type="text" id="filenameInput" class="filename-input" value="document" placeholder="Enter filename">
+    </div>
+
+    <!-- Convert Button -->
+    <button class="btn-convert" id="convertBtn" type="button" disabled>
+      <!-- file-text icon -->
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+        <polyline points="10 9 9 9 8 9"/>
+      </svg>
+      <span id="convertLabel">Convert to PDF (0 images)</span>
+    </button>
+
+    <!-- Status -->
+    <div class="status-area">
+      <div id="statusTxt" class="status-txt"></div>
+      <div id="progTrack" class="prog-track">
+        <div id="progBar" class="prog-bar"></div>
+      </div>
+      <div id="successMsg" class="success-msg">
+        <!-- check-circle icon -->
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        PDF saved successfully!
+      </div>
+    </div>
+  </div>
+
+  <!-- How to Use -->
+  <div class="card">
+    <h2 class="card-title" style="font-size:18px;margin-bottom:20px;">How to Use Snap2PDF</h2>
+    <div class="steps">
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <p class="step-title">Add your images</p>
+          <p class="step-desc">Click <strong>Select Images</strong> or drag and drop JPG, PNG, or WebP files onto the upload area. Each image becomes a separate page in the PDF. You can add multiple images at once.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <p class="step-title">Choose your settings</p>
+          <p class="step-desc">Select a page orientation (Portrait or Landscape), a page size (A4, US Letter, or match the original image), and a margin. Enable compression and adjust the quality level if you want a smaller file size.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <p class="step-title">Name your PDF</p>
+          <p class="step-desc">Enter a filename in the <strong>PDF Filename</strong> field. The <code>.pdf</code> extension is added automatically if you skip it.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <p class="step-title">Convert and download</p>
+          <p class="step-desc">Click the purple <strong>Convert to PDF</strong> button. The PDF is built entirely inside your browser and saved straight to your device — no server, no waiting.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <p class="step-title">Removing an image</p>
+          <p class="step-desc">Hover over any thumbnail and click the <strong>×</strong> icon in the corner to remove it before converting.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-body">
+          <p class="step-title">Works offline too</p>
+          <p class="step-desc">Once the page has loaded, you can disconnect from the internet and conversion still works. All processing is done locally with JavaScript.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-row">
+      <span>&copy; 2025 Snap2PDF</span>
+      <span class="dot">&middot;</span>
+      <a href="https://github.com/rajaslol" class="footer-link" target="_blank" rel="noopener">
+        <!-- github icon -->
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+        </svg>
+        GitHub
+      </a>
+      <span class="dot">&middot;</span>
+      <button class="tos-btn" id="tosBtn" type="button">Terms of Use</button>
+    </div>
+  </footer>
+
+</div>
+
+<!-- Terms of Use Modal -->
+<div class="modal-overlay" id="tosModal" role="dialog" aria-modal="true" aria-labelledby="tosTitle">
+  <div class="modal">
+    <button class="modal-close" id="tosClose" type="button" aria-label="Close modal">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+
+    <h2 class="modal-title" id="tosTitle">Terms of Use</h2>
+    <p class="modal-date">Last updated: June 2025</p>
+
+    <div class="modal-sec">
+      <h3>Data &amp; Privacy</h3>
+      <p>Snap2PDF does <strong>not</strong> collect, store, or transmit your images or the PDFs you create. All processing happens entirely inside your browser using JavaScript. Your files never leave your device.</p>
+    </div>
+    <div class="modal-hr"></div>
+
+    <div class="modal-sec">
+      <h3>Tracking</h3>
+      <p>Snap2PDF does not use cookies, analytics, advertising networks, or any form of user tracking. No personal data is collected while you use this tool.</p>
+    </div>
+    <div class="modal-hr"></div>
+
+    <div class="modal-sec">
+      <h3>Third-Party Libraries</h3>
+      <p>This tool loads <strong>jsPDF</strong> for PDF generation from a public CDN. That CDN request may log your IP address under its own privacy policy. No other external requests are made.</p>
+    </div>
+    <div class="modal-hr"></div>
+
+    <div class="modal-sec">
+      <h3>Acceptable Use</h3>
+      <p>Snap2PDF is free for personal and commercial use. You are responsible for ensuring you have the right to use any images you convert. The tool is provided as-is with no warranty.</p>
+    </div>
+    <div class="modal-hr"></div>
+
+    <div class="modal-sec">
+      <h3>Changes</h3>
+      <p>These terms may change. Continued use after an update means you accept the revised terms.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── Helpers ──
+  function svgFileText() {
+    return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`;
+  }
+  function svgSpinner() {
+    return `<svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>`;
+  }
+  function svgCheck() {
+    return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+  }
+  function svgX() {
+    return `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+  }
+  function esc(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Refs ──
+  const uploadArea    = document.getElementById('uploadArea');
+  const uploadPH      = document.getElementById('uploadPlaceholder');
+  const selectBtn     = document.getElementById('selectBtn');
+  const imageInput    = document.getElementById('imageInput');
+  const thumbGrid     = document.getElementById('thumbGrid');
+  const optionsWrap   = document.getElementById('optionsWrap');
+  const filenameWrap  = document.getElementById('filenameWrap');
+  const filenameInput = document.getElementById('filenameInput');
+  const convertBtn    = document.getElementById('convertBtn');
+  const convertLabel  = document.getElementById('convertLabel');
+  const statusTxt     = document.getElementById('statusTxt');
+  const progTrack     = document.getElementById('progTrack');
+  const progBar       = document.getElementById('progBar');
+  const successMsg    = document.getElementById('successMsg');
+  const qualityRow    = document.getElementById('qualityRow');
+  const qVal          = document.getElementById('qVal');
+
+  // ── State ──
+  let images = [];
+  let opts = { orientation:'portrait', pagesize:'a4', margin:'none', compression:'compress', quality:1 };
+
+  // ── Option buttons ──
+  document.querySelectorAll('.opt-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const o = this.dataset.opt, v = this.dataset.val;
+      document.querySelectorAll(`[data-opt="${o}"]`).forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      opts[o] = v;
+      if (o === 'compression') qualityRow.style.display = v === 'compress' ? 'flex' : 'none';
+    });
+  });
+
+  // ── Quality stepper ──
+  document.getElementById('qUp').addEventListener('click', () => {
+    if (opts.quality < 5) { opts.quality++; qVal.textContent = opts.quality; }
+  });
+  document.getElementById('qDown').addEventListener('click', () => {
+    if (opts.quality > 1) { opts.quality--; qVal.textContent = opts.quality; }
+  });
+
+  // ── File select button ──
+  selectBtn.addEventListener('click', e => { e.stopPropagation(); imageInput.click(); });
+
+  // ── Click on upload area ──
+  uploadArea.addEventListener('click', e => {
+    if (e.target.closest('.thumb-rm') || e.target === selectBtn || e.target.closest('#selectBtn')) return;
+    imageInput.click();
+  });
+
+  // ── Drag & drop ──
+  uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+  uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
+  uploadArea.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadArea.classList.remove('drag-over');
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    if (files.length) { images = [...images, ...files]; render(); }
+  });
+
+  // ── Input change ──
+  imageInput.addEventListener('change', e => {
+    images = [...images, ...Array.from(e.target.files)];
+    imageInput.value = '';
+    render();
+  });
+
+  // ── Remove image ──
+  function removeImage(i) {
+    images.splice(i, 1);
+    render();
+  }
+
+  // ── Render ──
+  function render() {
+    thumbGrid.innerHTML = '';
+    statusTxt.textContent = '';
+    progTrack.classList.remove('active');
+    progBar.style.width = '0%';
+    successMsg.classList.remove('show');
+
+    if (images.length > 0) {
+      uploadArea.classList.add('has-files');
+      uploadPH.style.display = 'none';
+      convertBtn.disabled = false;
+      filenameWrap.classList.add('show');
+      optionsWrap.classList.add('show');
+      convertLabel.textContent = `Convert to PDF (${images.length} image${images.length !== 1 ? 's' : ''})`;
+
+      images.forEach((file, idx) => {
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const div = document.createElement('div');
+          div.className = 'thumb';
+          div.innerHTML = `<img src="${ev.target.result}" alt="${esc(file.name)}"><button class="thumb-rm" type="button" title="Remove" data-idx="${idx}"><div class="thumb-rm-icon">${svgX()}</div></button>`;
+          div.querySelector('.thumb-rm').addEventListener('click', e => {
+            e.stopPropagation();
+            removeImage(parseInt(e.currentTarget.dataset.idx, 10));
+          });
+          thumbGrid.appendChild(div);
+        };
+        reader.readAsDataURL(file);
+      });
+
+    } else {
+      uploadArea.classList.remove('has-files');
+      uploadPH.style.display = '';
+      convertBtn.disabled = true;
+      filenameWrap.classList.remove('show');
+      optionsWrap.classList.remove('show');
+      convertLabel.textContent = 'Convert to PDF (0 images)';
+    }
+  }
+
+  // ── Convert ──
+  convertBtn.addEventListener('click', async () => {
+    if (!images.length) return;
+
+    let fname = filenameInput.value.trim() || 'document';
+    if (!fname.toLowerCase().endsWith('.pdf')) fname += '.pdf';
+
+    convertBtn.disabled = true;
+    convertBtn.innerHTML = svgSpinner() + '<span>Converting…</span>';
+    progTrack.classList.add('active');
+    successMsg.classList.remove('show');
+    filenameInput.disabled = true;
+
+    try {
+      const { jsPDF } = window.jspdf;
+      const orient = opts.orientation === 'portrait' ? 'p' : 'l';
+      const fmt    = opts.pagesize === 'letter' ? 'letter' : 'a4';
+
+      // For "auto" page size, we'll build each page individually
+      const isAuto = opts.pagesize === 'auto';
+      let pdf = isAuto ? null : new jsPDF(orient, 'mm', fmt);
+
+      const margins = { none: 0, small: 10, big: 20 };
+      const margin  = margins[opts.margin] ?? 0;
+      const qMap    = [0.4, 0.6, 0.75, 0.88, 1.0];
+      const quality = opts.compression === 'compress' ? qMap[opts.quality - 1] : 1.0;
+
+      const total = images.length;
+
+      for (let i = 0; i < total; i++) {
+        statusTxt.textContent = `Processing image ${i + 1} of ${total}…`;
+
+        const imgData = await new Promise((res, rej) => {
+          const r = new FileReader();
+          r.onload = () => res(r.result);
+          r.onerror = rej;
+          r.readAsDataURL(images[i]);
+        });
+
+        const imgEl = await new Promise((res, rej) => {
+          const el = new Image();
+          el.onload = () => res(el);
+          el.onerror = rej;
+          el.src = imgData;
+        });
+
+        const imgFmt = images[i].type === 'image/png' ? 'PNG' : 'JPEG';
+
+        if (isAuto) {
+          const wMm = imgEl.width  * 0.264583;
+          const hMm = imgEl.height * 0.264583;
+          const pageOrient = wMm >= hMm ? 'l' : 'p';
+
+          if (i === 0) {
+            pdf = new jsPDF(pageOrient, 'mm', [wMm, hMm]);
+          } else {
+            pdf.addPage([wMm, hMm], pageOrient);
+          }
+          pdf.addImage(imgData, imgFmt, margin, margin, wMm - margin * 2, hMm - margin * 2, undefined, 'FAST', 0, quality);
+
+        } else {
+          if (i > 0) pdf.addPage(fmt, orient);
+
+          const pw = pdf.internal.pageSize.getWidth();
+          const ph = pdf.internal.pageSize.getHeight();
+          const ratio = imgEl.height / imgEl.width;
+
+          let dw = pw - margin * 2;
+          let dh = ratio * dw;
+          if (dh > ph - margin * 2) { dh = ph - margin * 2; dw = dh / ratio; }
+
+          const x = (pw - dw) / 2;
+          const y = (ph - dh) / 2;
+
+          pdf.addImage(imgData, imgFmt, x, y, dw, dh, undefined, 'FAST', 0, quality);
+        }
+
+        progBar.style.width = `${Math.round(((i + 1) / total) * 100)}%`;
+      }
+
+      statusTxt.textContent = 'Saving…';
+      pdf.save(fname);
+
+      await new Promise(r => setTimeout(r, 350));
+
+      statusTxt.textContent = '';
+      successMsg.classList.add('show');
+      convertBtn.innerHTML = svgCheck() + '<span>Done!</span>';
+      convertBtn.disabled = false;
+      filenameInput.disabled = false;
+
+      setTimeout(() => {
+        images = [];
+        imageInput.value = '';
+        render();
+        progTrack.classList.remove('active');
+        progBar.style.width = '0%';
+        successMsg.classList.remove('show');
+        convertBtn.innerHTML = svgFileText() + '<span id="convertLabel">Convert to PDF (0 images)</span>';
+        // Re-assign the label ref after innerHTML swap
+        Object.defineProperty(window, '_convertLabel', { get: () => convertBtn.querySelector('span') });
+      }, 2600);
+
+    } catch (err) {
+      console.error(err);
+      statusTxt.textContent = 'Something went wrong — please try again.';
+      convertBtn.disabled = false;
+      filenameInput.disabled = false;
+      convertBtn.innerHTML = svgFileText() + `<span>Convert to PDF (${images.length} image${images.length !== 1 ? 's' : ''})</span>`;
+    }
+  });
+
+  // ── Modal ──
+  document.getElementById('tosBtn').addEventListener('click', () => document.getElementById('tosModal').classList.add('open'));
+  document.getElementById('tosClose').addEventListener('click', () => document.getElementById('tosModal').classList.remove('open'));
+  document.getElementById('tosModal').addEventListener('click', e => { if (e.target.id === 'tosModal') e.target.classList.remove('open'); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') document.getElementById('tosModal').classList.remove('open'); });
+
+  // ── Init ──
+  render();
+</script>
+</body>
+</html>
